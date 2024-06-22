@@ -971,8 +971,9 @@ gdzie:
 
 Klastrowanie K-średnich polega na minimalizacji sumy kwadratów odległości między punktami a najbliższym centroidem:
 
-
-$$ \text{argmin}_S \sum_{i=1}^{k} \sum_{x \in S_i} \| x - \mu_i \|^2 $$
+```latex
+\text{argmin}_S \sum_{i=1}^{k} \sum_{x \in S_i} \| x - \mu_i \|^2
+```
 
 gdzie:
 - $\( k \)$ to liczba klastrów,
