@@ -954,20 +954,26 @@ W module `visualization.py` znajdują się funkcje do analizy danych, w tym regr
 
 **Regresja Liniowa**
 
+## Regresja Liniowa
+
 Model regresji liniowej jest dopasowywany do danych przy użyciu następujących wzorów:
 
-\[ y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ldots + \beta_n x_n \]
+$$
+y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ldots + \beta_n x_n
+$$
 
 gdzie:
 - \( y \) to zmienna zależna (np. wynagrodzenie),
 - \( \beta_0, \beta_1, \ldots, \beta_n \) to współczynniki modelu,
 - \( x_1, x_2, \ldots, x_n \) to zmienne niezależne (np. liczba wymaganych umiejętności).
 
-**Klastrowanie K-średnich**
+## Klastrowanie K-średnich
 
 Klastrowanie K-średnich polega na minimalizacji sumy kwadratów odległości między punktami a najbliższym centroidem:
 
-\[ \text{argmin}_S \sum_{i=1}^{k} \sum_{x \in S_i} \| x - \mu_i \|^2 \]
+$$
+\text{argmin}_S \sum_{i=1}^{k} \sum_{x \in S_i} \| x - \mu_i \|^2
+$$
 
 gdzie:
 - \( k \) to liczba klastrów,
