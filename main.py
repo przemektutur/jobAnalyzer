@@ -202,7 +202,8 @@ class App(tk.Tk):
                 if os.path.exists(output_file_path):
                     os.remove(output_file_path)
 
-                df = dp.request(working_dir, current_skills, url)
+                # df = dp.request(working_dir, current_skills, url)
+                df = dp.request(working_dir, current_skills, url, url_key)
 
                 # Append to the output_whole.csv file
                 output_whole_file_path = os.path.join(working_dir, "output_whole.csv")

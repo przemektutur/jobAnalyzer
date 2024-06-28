@@ -196,12 +196,35 @@ def take_job_description(dir: str, url: str) -> None:
     try:
         resp = requests.get(url)
         soup = BeautifulSoup(resp.text, "html.parser")
-        target_div_content = soup.find("div", class_="css-6sm4q6")
-        if target_div_content:
+        target_div_content = soup.find_all("script")
+
+        json_data = None
+        for script in target_div_content:
+            if 'body' in script.text:
+                json_data = script.text
+                break
+
+        if json_data:
+            # Konwertuj JSON-encoded string do słownika
+            data = json.loads(json_data)
+            #data['props']['pageProps']['offer']['body']
+
             with open(
                 os.path.join(dir, "job_description.txt"), "w", encoding="utf-8"
             ) as fdescriptor:
-                fdescriptor.write(target_div_content.text)
+                fdescriptor.write(data["props"]["pageProps"]["offer"]["title"])
+                fdescriptor.write(
+                    str(data["props"]["pageProps"]["offer"]["companyName"])
+                )
+                fdescriptor.write(
+                    str(data["props"]["pageProps"]["offer"]["employmentTypes"])
+                )
+                fdescriptor.write(
+                    str(data["props"]["pageProps"]["offer"]['body'])
+                )
+                fdescriptor.write(
+                    str(data["props"]["pageProps"]["offer"]["experienceLevel"])
+                )
         else:
             print("The specified div was not found.")
     except Exception as e:
@@ -209,8 +232,8 @@ def take_job_description(dir: str, url: str) -> None:
 
 
 def request(
-    working_dir: str, current_skills: List[str], url: str
-) -> pd.DataFrame:
+    working_dir: str, current_skills: List[str], url: str, job_type: str
+    ) -> pd.DataFrame:
     """
     Send a request to a job listing URL, process the data, and save it.
 
@@ -222,6 +245,8 @@ def request(
         List of current skills to match against job listings.
     url : str
         The URL of the job listings.
+    job_type : str
+        The job type to be added to the DataFrame.
 
     Returns
     -------
@@ -256,6 +281,7 @@ def request(
                 "LOCATION": data.get("city", "Unknown"),
                 "COMPANY": data.get("companyName", "Unknown"),
                 "DATE": datetime.datetime.now().strftime("%Y-%m-%d"),
+                "JOB_TYPE": job_type  # Add job type to the row
             }
             data_list.append(row)
             directory = create_working_dir(working_dir, data["slug"])
@@ -290,4 +316,3 @@ def request(
     except Exception as e:
         print(f"Error processing request: {e}")
         return pd.DataFrame()  # Return empty DataFrame on error
-

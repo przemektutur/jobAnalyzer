@@ -173,7 +173,7 @@ def plot_job_locations(
 
 def plot_salary_trends(df: pd.DataFrame) -> None:
     """
-    Plot salary trends over time.
+    Plot salary trends over time with future approximation.
 
     Parameters
     ----------
@@ -182,9 +182,66 @@ def plot_salary_trends(df: pd.DataFrame) -> None:
     """
     df["DATE"] = pd.to_datetime(df["DATE"])
     df = df.sort_values("DATE")
+
+    # Fill NaN values with the median of the respective columns
+    df["PAYMENT_FROM"] = (
+        df["PAYMENT_FROM"]
+        .astype(float)
+        .fillna(df["PAYMENT_FROM"].astype(float).median())
+    )
+    df["PAYMENT_TO"] = (
+        df["PAYMENT_TO"]
+        .astype(float)
+        .fillna(df["PAYMENT_TO"].astype(float).median())
+    )
+
+    # Adding future dates for approximation
+    future_dates = pd.date_range(
+        df["DATE"].max(), periods=10, freq="D"
+    )[1:]
+    future_df = pd.DataFrame(future_dates, columns=["DATE"])
+
+    model_from = LinearRegression()
+    model_to = LinearRegression()
+
+    X = np.array(df.index).reshape(-1, 1)
+    y_from = df["PAYMENT_FROM"].astype(float)
+    y_to = df["PAYMENT_TO"].astype(float)
+
+    model_from.fit(X, y_from)
+    model_to.fit(X, y_to)
+
+    future_X = np.array(
+        range(len(df), len(df) + len(future_dates))
+    ).reshape(-1, 1)
+    future_df["PAYMENT_FROM"] = model_from.predict(future_X)
+    future_df["PAYMENT_TO"] = model_to.predict(future_X)
+
     plt.figure(figsize=(8, 5))
-    plt.plot(df["DATE"], df["PAYMENT_FROM"].astype(float), label="Payment From")
-    plt.plot(df["DATE"], df["PAYMENT_TO"].astype(float), label="Payment To")
+    plt.plot(
+        df["DATE"],
+        df["PAYMENT_FROM"].astype(float),
+        label="Payment From"
+    )
+    plt.plot(
+        df["DATE"],
+        df["PAYMENT_TO"].astype(float),
+        label="Payment To"
+    )
+    plt.plot(
+        future_df["DATE"],
+        future_df["PAYMENT_FROM"],
+        linestyle="--",
+        color="blue",
+        label="Predicted Payment From"
+    )
+    plt.plot(
+        future_df["DATE"],
+        future_df["PAYMENT_TO"],
+        linestyle="--",
+        color="orange",
+        label="Predicted Payment To"
+    )
     plt.title("Salary Trends Over Time")
     plt.xlabel("Date")
     plt.ylabel("Salary (PLN)")
