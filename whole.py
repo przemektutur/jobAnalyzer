@@ -19,17 +19,13 @@ def request(working_dir: str, current_skills: list, url: str) -> pd.DataFrame:
 
     Parameters
     ----------
-    working_dir : str
-        The working directory to save the data.
-    current_skills : list
-        List of current skills to include in the request.
-    url : str
-        The URL to request job data from.
+    working_dir: The working directory to save the data.
+    current_skills: List of current skills to include in the request.
+    url: URL to request job data from.
 
     Returns
     -------
-    pd.DataFrame
-        DataFrame containing the job data.
+    DataFrame containing the job data.
     """
     try:
         file_path = os.path.join(working_dir, "output_data.csv")
@@ -95,15 +91,12 @@ def fetch_job_data(working_dir: str, current_skills: list) -> list:
 
     Parameters
     ----------
-    working_dir : str
-        The working directory to save the data.
-    current_skills : list
-        List of current skills to include in the request.
+    working_dir: Working directory to save the data.
+    current_skills: List of current skills to include in the request.
 
     Returns
     -------
-    list
-        List of dictionaries containing job data.
+    List of dictionaries containing job data.
     """
     all_data = []
     for job_type, url in urls.items():
@@ -121,10 +114,12 @@ def save_to_csv(data: list, file_path: str) -> None:
 
     Parameters
     ----------
-    data : list
-        List of dictionaries containing job data.
-    file_path : str
-        Path to the CSV file to save the data.
+    data: List of dictionaries containing job data.
+    file_path: Path to the CSV file to save the data.
+
+    Returns
+    -------
+    None
     """
     df = pd.DataFrame(data)
     if not df.empty:
@@ -167,8 +162,11 @@ def analyze_and_visualize(file_path: str) -> None:
 
     Parameters
     ----------
-    file_path : str
-        Path to the CSV file containing job data.
+    file_path: Path to the CSV file containing job data.
+
+    Returns
+    -------
+    None
     """
     if os.path.exists(file_path):
         df = pd.read_csv(file_path)
@@ -182,6 +180,12 @@ def analyze_and_visualize(file_path: str) -> None:
 def main() -> None:
     """
     Main function to fetch, save, analyze, and visualize job data.
+
+    This function takes no parameters.
+
+    Returns
+    -------
+    None
     """
     working_dir = os.getcwd()
     current_skills = []  # Load current skills from the file or user input if necessary
