@@ -124,7 +124,9 @@ class App(tk.Tk):
             "c-level",
         ).grid(row=3, column=0, padx=10, pady=5, sticky="ew")
 
-        tk.Checkbutton(self, text="Remote", variable=self.remote_var, width=20).grid(
+        tk.Checkbutton(
+            self, text="Remote", variable=self.remote_var, width=20
+        ).grid(
             row=4, column=0, padx=10, pady=5, sticky="ew"
         )
 
@@ -134,15 +136,23 @@ class App(tk.Tk):
             command=self.set_working_directory,
             width=20,
         ).grid(row=0, column=1, padx=10, pady=5)
-        tk.Button(self, text="Load Skills", command=self.load_skills, width=20).grid(
+        tk.Button(
+            self, text="Load Skills", command=self.load_skills, width=20
+        ).grid(
             row=1, column=1, padx=10, pady=5
         )
-        tk.Button(self, text="Scrape Jobs", command=self.scrape_jobs, width=20).grid(
+        tk.Button(
+            self, text="Scrape Jobs", command=self.scrape_jobs, width=20
+        ).grid(
             row=2, column=1, padx=10, pady=5
         )
 
         analyze_button = tk.Button(
-            self, text="Analyze Data", command=self.analyze_data, bg="lightgreen", width=20
+            self,
+            text="Analyze Data",
+            command=self.analyze_data,
+            bg="lightgreen",
+            width=20
         )
         analyze_button.grid(row=0, column=2, padx=10, pady=5)
         visualize_button = tk.Button(
@@ -155,7 +165,7 @@ class App(tk.Tk):
         visualize_button.grid(row=1, column=2, padx=10, pady=5)
         whole_analysis_button = tk.Button(
             self,
-            text="Cala analiza",
+            text="Whole Analyze",
             command=self.run_whole_analysis,
             bg="lightcoral",
             width=20,
@@ -169,7 +179,9 @@ class App(tk.Tk):
         global working_dir
         working_dir = filedialog.askdirectory()
         if working_dir:
-            messagebox.showinfo("Info", f"Working directory set to {working_dir}")
+            messagebox.showinfo(
+                "Info", f"Working directory set to {working_dir}"
+            )
         else:
             messagebox.showerror("Error", "No directory selected.")
 
@@ -204,6 +216,8 @@ class App(tk.Tk):
 
                 # df = dp.request(working_dir, current_skills, url)
                 df = dp.request(working_dir, current_skills, url, url_key)
+                dp.generate_summary(working_dir, df,
+                                    os.path.join(working_dir, "skills.txt"))
 
                 # Append to the output_whole.csv file
                 output_whole_file_path = os.path.join(working_dir, "output_whole.csv")
@@ -216,13 +230,17 @@ class App(tk.Tk):
                         output_whole_file_path, mode="w", header=True, index=False
                     )
 
-                messagebox.showinfo("Info", "Jobs scraped successfully.")
+                messagebox.showinfo(
+                    "Info", "Jobs scraped successfully."
+                )
             else:
                 messagebox.showerror(
                     "Error", "Please set the working directory first."
                 )
         else:
-            messagebox.showerror("Error", "Please select a job type.")
+            messagebox.showerror(
+                "Error", "Please select a job type."
+            )
 
     def analyze_data(self) -> None:
         """
