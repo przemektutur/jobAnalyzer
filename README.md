@@ -2,7 +2,7 @@
 
 ### 1. Opis Projektu
 
-Job Webscrapper to aplikacja, która automatycznie zbiera, analizuje i wizualizuje dane dotyczące ofert pracy. Program został zaprojektowany, aby pomóc użytkownikom w śledzeniu trendów na rynku pracy oraz w analizie wymaganych umiejętności i wynagrodzeń.
+Job Webscrapper to aplikacja, która automatycznie zbiera, analizuje i wizualizuje dane dotyczące ofert pracy. Program został zaprojektowany, aby pomóc użytkownikom w śledzeniu trendów na rynku pracy oraz w analizie wymaganych umiejętności i wynagrodzeń. W oparciu o pliki przygotowuje CV (curriculum vitae).
 
 ### 2. Architektura Systemu
 
