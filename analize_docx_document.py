@@ -1,19 +1,20 @@
 import docx
-from typing import 
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from typing import Dict
 
-
-def get_paragraph_formatting(paragraph) -> Dict:
+def get_paragraph_formatting(paragraph):
     """
     Retrieve the formatting of a given paragraph.
 
     Parameters
     ----------
-    paragraph: docx.text.paragraph.Paragraph - paragraph to analyze.
+    paragraph : docx.text.paragraph.Paragraph
+        The paragraph to analyze.
 
     Returns
     -------
-    Dictionary containing formatting details of the paragraph.
+    dict
+        A dictionary containing formatting details of the paragraph.
     """
     formatting = {}
 
@@ -43,17 +44,14 @@ def get_paragraph_formatting(paragraph) -> Dict:
     return formatting
 
 
-def analyze_docx(file_path) -> None:
+def analyze_docx(file_path):
     """
     Analyze the DOCX document and print formatting settings for each paragraph.
 
     Parameters
     ----------
-    file_path : Path to the DOCX file.
-
-    Returns
-    -------
-    None
+    file_path : str
+        The path to the DOCX file.
     """
     doc = docx.Document(file_path)
 
