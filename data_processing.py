@@ -1,479 +1,644 @@
-# visualization.py
+# data_processing.py
 
+import os
 import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression
-import numpy as np
-from sklearn.cluster import KMeans
-from typing import Tuple
+import datetime
+import shutil
+import docx
+from docx.shared import Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+import requests
+from bs4 import BeautifulSoup
+import json
+from typing import List
+from jinja2 import Environment, FileSystemLoader
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 
 
-def analyze_data(df: pd.DataFrame) -> Tuple[LinearRegression, LinearRegression]:
+def create_working_dir(working_dir: str, name: str) -> str:
     """
-    Analyze data to fit linear regression models.
+    Create a working directory with a timestamp and sanitized name.
 
     Parameters
     ----------
-    df : pd.DataFrame
-        DataFrame containing job data.
+    working_dir : str
+        The base directory where the new directory will be created.
+    name : str
+        The name to be sanitized and included in the directory name.
 
     Returns
     -------
-    Tuple[LinearRegression, LinearRegression]
-        Fitted linear regression models for payment from and to.
+    str
+        The path to the newly created directory.
     """
-    df["REQUIRED_SKILLS_LEN"] = df["REQUIRED_SKILLS"].apply(
-        lambda x: len(eval(x)) if isinstance(x, str) else 0
+    date = (
+        str(datetime.datetime.now())
+        .split(".")[0]
+        .replace(" ", "_")
+        .replace("-", "_")
+        .replace(":", "_")
     )
-    df["ADDITIONAL_SKILLS_LEN"] = df["ADDITIONAL_SKILLS"].apply(
-        lambda x: len(eval(x)) if isinstance(x, str) and x != "None" else 0
+    name = (
+        name.replace("-", "_")
+        .replace(":", "_")
+        .replace("(", "_")
+        .replace(")", "_")
     )
-    X = df[["REQUIRED_SKILLS_LEN", "ADDITIONAL_SKILLS_LEN"]].fillna(0)
-    y_from = df["PAYMENT_FROM"].astype(float).fillna(
-        df["PAYMENT_FROM"].astype(float).median()
-    )
-    y_to = df["PAYMENT_TO"].astype(float).fillna(
-        df["PAYMENT_TO"].astype(float).median()
-    )
-
-    model_from = LinearRegression()
-    model_to = LinearRegression()
-    model_from.fit(X, y_from)
-    model_to.fit(X, y_to)
-
-    return model_from, model_to
+    dir_name = os.path.join(working_dir, f"{date}_{name}")
+    if not os.path.exists(dir_name):
+        os.mkdir(dir_name)
+    return dir_name
 
 
-def visualize_data(df: pd.DataFrame) -> Tuple[pd.Series, pd.Series]:
+def sanitize_filename(filename: str) -> str:
     """
-    Visualize data from the DataFrame.
+    Sanitize a filename by replacing or removing invalid characters.
 
     Parameters
     ----------
-    df : pd.DataFrame
-        DataFrame containing job data.
+    filename : str
+        The filename to sanitize.
 
     Returns
     -------
-    Tuple[pd.Series, pd.Series]
-        Most common skills and high salary skills.
+    str
+        The sanitized filename.
     """
-    most_common_skills, high_salary_skills = analyze_most_desirable_skills(df)
-    plot_required_skills_pie_chart(df)
-    plot_salary_ranges(df)
-    plot_job_locations(df)
-    plot_salary_trends(df)
-    cluster_job_offers(df)
-    return most_common_skills, high_salary_skills
+    return (
+        filename.replace(" ", "_")
+        .replace("-", "_")
+        .replace("/", "_")
+        .replace("\\", "_")
+        .replace("*", "")
+        .replace("|", "")
+        .replace(":", "")
+        .replace("?", "")
+        .replace("<", "")
+        .replace(">", "")
+        .replace(":", "_")
+        .replace("(", "_")
+        .replace(")", "_")
+    )
 
 
-def plot_required_skills_pie_chart(
-    df: pd.DataFrame, ax: plt.Axes = None, job_type: str = None
+def word_cv_prepare(
+    working_dir: str, save_dir: str, skills: List[str], position: str,
+    current_skills: List[str]
 ) -> None:
     """
-    Plot a pie chart of the required skills distribution.
+    Prepare and save a CV document in a specified directory.
 
     Parameters
     ----------
-    df : pd.DataFrame
-        DataFrame containing job data.
-    ax : plt.Axes, optional
-        Matplotlib axes object to draw the plot onto.
-    job_type : str, optional
-        Job type for the title.
+    working_dir : str
+        The base working directory.
+    save_dir : str
+        The directory where the CV will be saved.
+    skills : List[str]
+        List of skills to include in the CV.
+    position : str
+        The job position to include in the CV.
+    current_skills : List[str]
+        List of current skills to include in the CV.
     """
-    skills = df["REQUIRED_SKILLS"].apply(lambda x: eval(x) if isinstance(x, str) else [])
-    if skills.apply(len).sum() == 0:
-        return  # Skip plotting if there are no skills to plot
-    skills_counts = pd.Series(np.concatenate(skills.values)).value_counts()
-    skills_counts.head(20).plot(kind="pie", autopct="%1.1f%%", ax=ax)
-    if ax:
-        ax.set_title(f"Required Skills Distribution - {job_type}")
-        ax.set_ylabel("")  # Remove y-axis label
-    else:
-        plt.title("Required Skills Distribution")
-        plt.ylabel("")  # Remove y-axis label
-        plt.show()
+    all_skills = sorted(set(current_skills + skills), key=str.lower)
+
+    source = os.path.join(working_dir, "PT.docx")
+    if not os.path.exists(source):
+        print(f"Source CV file not found: {source}")
+        return
+
+    destination = os.path.join(save_dir, "PrzemyslawTuturCV.docx")
+    try:
+        shutil.copy(source, destination)
+    except OSError as e:
+        print(f"Error copying document: {e}")
+        return
+
+    doc_name_position = sanitize_filename(position)
+    try:
+        doc = docx.Document(destination)
+    except Exception as e:
+        print(f"Error opening document: {e}")
+        return
+
+    # Add all skills
+    paragraph = doc.add_paragraph(", ".join(all_skills).upper())
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    run = paragraph.runs[0]
+    run.font.name = "Times New Roman"
+
+    # Add footer
+    section = doc.sections[0]
+    footer = section.footer
+    footer_para = footer.paragraphs[0]
+    footer_para_run = footer_para.add_run(
+        f"This CV document was automatically generated and submitted for the "
+        f"{position} position based on skill matching. If you contact me with "
+        f"a response, I might be momentarily confused :)... Apologies for the "
+        f"Monty Python 'spam, spam, spam' scenario if you have received "
+        f"multiple CVs."
+    )
+    footer_para_run.font.name = "Times New Roman"
+    footer_para_run.font.bold = True
+    footer_para_run.font.size = Pt(8)
+
+    # Read certification and GitHub files
+    certs_file = os.path.join(working_dir, "certs.txt")
+    github_file = os.path.join(working_dir, "github.txt")
+
+    certs_links = []
+    github_links = []
+
+    if os.path.exists(certs_file):
+        with open(certs_file, "r") as file:
+            certs_links = [line.strip() for line in file]
+
+    if os.path.exists(github_file):
+        with open(github_file, "r") as file:
+            github_links = [line.strip() for line in file]
+
+    # Add certifications
+    if certs_links:
+        paragraph2 = doc.add_paragraph("CERTIFICATES - LAST 3 YEARS")
+        paragraph2.style = "Heading 1"
+        paragraph2.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        doc.add_paragraph("\n" + "\n".join(certs_links))
+
+    # Add GitHub links
+    if github_links:
+        paragraph3 = doc.add_paragraph("LINKEDIN/GITHUB")
+        paragraph3.style = "Heading 1"
+        paragraph3.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        doc.add_paragraph("\n" + "\n".join(github_links) + "\n")
+
+    # Add soft skills
+    soft_skills = ["ADAPTABILITY", "TIME MANAGEMENT", "TEAM LEADERSHIP", "COMMUNICATION", "PROBLEM SOLVING"]
+    paragraph4 = doc.add_paragraph("SOFT SKILLS")
+    paragraph4.style = "Heading 1"
+    paragraph4.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    doc.add_paragraph("\n" + ", ".join(soft_skills) + "\n")
+
+    # Add hobbies
+    hobbies = ["READING", "MOTORCYCLING", "CLIMBING", "MARTIAL ARTS"]
+    paragraph5 = doc.add_paragraph("HOBBIES")
+    paragraph5.style = "Heading 1"
+    paragraph5.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    paragraph5a = doc.add_paragraph("\n" + ", ".join(hobbies))
+    paragraph5a.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+
+    # Save the document
+    try:
+        doc.save(os.path.join(save_dir, f"Przemyslaw_Tutur_{doc_name_position}.docx"))
+    except OSError as e:
+        print(f"Error saving document: {e}")
+
+    # Append - PROJECTS.docx with custom formatting based on tags and justification
+    projects_path = os.path.join(working_dir, "PROJECTS.docx")
+    if os.path.exists(projects_path):
+        projects_doc = docx.Document(projects_path)
+        doc.add_page_break()  # Dodaj podział strony przed sekcją projektów
+
+        for para in projects_doc.paragraphs:
+            text = para.text.strip()
+
+            if text.startswith("<main-info>"):
+                # Główna sekcja - "MAIN PROJECTS"
+                main_info_paragraph = doc.add_paragraph(text.replace("<main-info>", "").strip())
+                main_info_paragraph.style = "Heading 1"
+            elif text.startswith("<company>"):
+                # Nazwa firmy - pogrubiona
+                company_paragraph = doc.add_paragraph()
+                company_run = company_paragraph.add_run(text.replace("<company>", "").strip())
+                company_run.bold = True
+                company_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+            elif text.startswith("<project>"):
+                # Projekt - tabulacja + pogrubienie
+                project_paragraph = doc.add_paragraph(text.replace("<project>", "").strip())
+                project_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+                project_paragraph.paragraph_format.first_line_indent = docx.shared.Pt(0)  # Wcięcie dla kolejnych linii
+                project_run = project_paragraph.runs[0]
+                project_run.bold = True
+            elif text.startswith("<project-desc>"):
+                # Opis projektu - podwójna tabulacja
+                project_desc_paragraph = doc.add_paragraph(text.replace("<project-desc>", "").strip())
+                project_desc_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+                project_desc_paragraph.paragraph_format.first_line_indent = docx.shared.Pt(0)
+            elif text.startswith("<project-skills>"):
+                # Umiejętności - potrójna tabulacja
+                project_skills_paragraph = doc.add_paragraph(text.replace("<project-skills>", "").strip())
+                project_skills_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+                project_skills_paragraph.paragraph_format.first_line_indent = docx.shared.Pt(36)
+            else:
+                # Inne przypadki (jeśli są)
+                other_paragraph = doc.add_paragraph(text)
+                other_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+
+    try:
+        doc.save(os.path.join(save_dir, f"Przemyslaw_Tutur_{doc_name_position}_extended.docx"))
+    except OSError as e:
+        print(f"Error saving document: {e}")
 
 
-def plot_salary_ranges(df: pd.DataFrame) -> None:
+def generate_cover_letter(
+        working_dir: str, job_title: str, company_name: str, job_url: str,
+        skills: List[str], soft_skills: List[str]
+) -> None:
     """
-    Plot box plots of salary ranges.
+    Generate and save a cover letter for a job application.
 
     Parameters
     ----------
-    df : pd.DataFrame
-        DataFrame containing job data.
+    working_dir : str
+        The base working directory.
+    job_title : str
+        The job title to include in the cover letter.
+    company_name : str
+        The company name to include in the cover letter.
+    job_url : str
+        The job URL to include in the cover letter.
+    skills : List[str]
+        List of hard skills to include in the cover letter.
+    soft_skills : List[str]
+        List of soft skills to include in the cover letter.
     """
-    # plt.figure(figsize=(6, 4))
-    df[["PAYMENT_FROM", "PAYMENT_TO"]].astype(float).plot(kind="box")
-    plt.title("Salary Ranges")
-    plt.ylabel("Salary (PLN)")
-    plt.show()
+    technical_skills = ", ".join(skills)
+    soft_skills_str = ", ".join(soft_skills)
+
+    doc = docx.Document()
+    doc.add_heading("Cover Letter", 0)
+    p1 = doc.add_paragraph(f"Date: {datetime.datetime.now().strftime('%Y-%m-%d')}")
+    p1.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    doc.add_paragraph("Dear Hiring Manager,")
+
+    # Initial paragraphs
+    doc.add_paragraph(
+        f"I am writing to express my interest in the {job_title} position at "
+        f"{company_name}. I found this job listing on {job_url} and believe "
+        f"that my skills and experience make me a strong candidate for this "
+        f"role."
+    )
+
+    # Paragraph for technical skills
+    p = doc.add_paragraph(
+        f"I have extensive experience in the required technical skills mentioned in the "
+        f"job description, including {technical_skills}. I am confident that my "
+        f"background and knowledge will enable me to contribute effectively "
+        f"to your team."
+    )
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+
+    # Paragraph for soft skills
+    p = doc.add_paragraph(
+        f"In addition to my technical expertise, I possess strong soft skills such as {soft_skills_str}. "
+        f"These skills have enabled me to work collaboratively and effectively in team environments, "
+        f"and to manage time and projects efficiently."
+    )
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+
+    # Additional paragraphs with justified alignment
+    p = doc.add_paragraph(
+        "I look forward to the opportunity to discuss how my skills and "
+        "experiences align with the needs of your team. Thank you for "
+        "considering my application."
+    )
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+
+    doc.add_paragraph("Sincerely,")
+    doc.add_paragraph("Przemyslaw Tutur")
+
+    # Add footer
+    section = doc.sections[0]
+    footer = section.footer
+    footer_para = footer.paragraphs[0]
+    footer_para_run = footer_para.add_run(
+        f"This motivation letter was generated and submitted for the "
+        f"{job_title} position. Please contact me directly if you wish to use it for any other position."
+    )
+    footer_para_run.font.name = "Times New Roman"
+    footer_para_run.font.bold = True
+    footer_para_run.font.size = Pt(8)
+
+    cover_letter_path = os.path.join(
+        working_dir, f"Cover_Letter_{sanitize_filename(job_title)}.docx"
+    )
+    doc.save(cover_letter_path)
+    print(f"Cover letter saved to {cover_letter_path}")
 
 
-def analyze_most_desirable_skills(
-    df: pd.DataFrame
-) -> Tuple[pd.Series, pd.Series]:
+def take_job_description(dir: str, url: str) -> None:
     """
-    Analyze and return the most desirable skills and high salary skills.
+    Retrieve and save the job description from a given URL.
 
     Parameters
     ----------
-    df : pd.DataFrame
-        DataFrame containing job data.
+    dir : str
+        The directory where the job description will be saved.
+    url : str
+        The URL of the job description.
+    """
+    try:
+        resp = requests.get(url)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        target_div_content = soup.find("div", class_="MuiBox-root css-7nl6k4")
+        if target_div_content:
+            with open(
+                os.path.join(dir, "job_description.txt"), "w", encoding="utf-8"
+            ) as fdescriptor:
+                fdescriptor.write(target_div_content.text)
+        else:
+            print("The specified div was not found.")
+    except Exception as e:
+        print(f"Error taking job description: {e}")
+
+
+def request(
+    working_dir: str, current_skills: List[str], url: str
+) -> pd.DataFrame:
+    """
+    Send a request to a job listing URL, process the data, and save it.
+
+    Parameters
+    ----------
+    working_dir : str
+        The base working directory.
+    current_skills : List[str]
+        List of current skills to match against job listings.
+    url : str
+        The URL of the job listings.
 
     Returns
     -------
-    Tuple[pd.Series, pd.Series]
-        Most common skills and high salary skills.
+    pd.DataFrame
+        DataFrame containing the processed job data.
     """
-    skills = df["REQUIRED_SKILLS"].apply(lambda x: eval(x) if isinstance(x, str) else [])
-    if skills.apply(len).sum() == 0:
-        return pd.Series(dtype="int"), pd.Series(dtype="int")
-    skills_counts = pd.Series(np.concatenate(skills.values)).value_counts()
-    high_salary_skills = pd.Series(
-        np.concatenate(
-            df[df["PAYMENT_TO"].astype(float) > df["PAYMENT_TO"].astype(float).quantile(0.75)][
-                "REQUIRED_SKILLS"
-            ].apply(lambda x: eval(x) if isinstance(x, str) else []).values
+    try:
+        # Clear the current output data CSV file
+        file_path = os.path.join(working_dir, "output_data.csv")
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        resp = requests.get(url)
+        int_resp = requests.get(url)
+        json_string = str(
+            int_resp.text.split('{"pages":')[1].split('"meta":')[0].rstrip(",")
+            + "}]"
         )
-    ).value_counts()
+        data_set = json.loads(json_string)
+        data_list = []
+        for data in data_set[0]["data"]:
+            sub_url = "https://justjoin.it/offers/" + data["slug"]
+            row = {
+                "TITLE": data["title"],
+                "REQUIRED_SKILLS": str(data["requiredSkills"]),
+                "ADDITIONAL_SKILLS": str(data["niceToHaveSkills"]),
+                "WORKPLACE_TYPE": data["workplaceType"],
+                "REMOTE_INTERVIEW": data["remoteInterview"],
+                "URL": sub_url,
+                "PAYMENT_FROM": str(data["employmentTypes"][0]["fromPln"]),
+                "PAYMENT_TO": str(data["employmentTypes"][0]["toPln"]),
+                "LOCATION": data.get("city", "Unknown"),
+                "COMPANY": data.get("companyName", "Unknown"),
+                "DATE": datetime.datetime.now().strftime("%Y-%m-%d"),
+            }
+            data_list.append(row)
+            directory = create_working_dir(working_dir, data["slug"])
+            take_job_description(directory, sub_url)
+            word_cv_prepare(
+                working_dir,
+                directory,
+                data["requiredSkills"],
+                data["title"],
+                current_skills,
+            )
+            soft_skills = ["adaptability", "time management", "team leadership", "communication", "problem solving"]
+            generate_cover_letter(
+                directory,
+                data["title"],
+                data.get("companyName", "Unknown"),
+                sub_url,
+                data["requiredSkills"],
+                soft_skills
+            )
+            print("Processed:", data["title"])
+        df = pd.DataFrame(data_list)
+        write_header = not os.path.exists(file_path)
+        df.to_csv(file_path, mode="a", index=False, header=write_header)
 
-    return skills_counts.head(20), high_salary_skills.head(20)
+        # Append to the output_whole.csv
+        whole_file_path = os.path.join(working_dir, "output_whole.csv")
+        df.to_csv(
+            whole_file_path, mode="a", index=False,
+            header=not os.path.exists(whole_file_path)
+        )
 
+        print("Data appended to CSV.")
+        return df
+    except Exception as e:
+        print(f"Error processing request: {e}")
+        return pd.DataFrame()  # Return empty DataFrame on error
 
-def plot_job_locations(
-    df: pd.DataFrame, ax: plt.Axes = None, job_type: str = None
-) -> None:
+def request(
+    working_dir: str, current_skills: List[str], url: str, job_type: str
+) -> pd.DataFrame:
     """
-    Plot a bar chart of the top 10 job locations.
+    Send a request to a job listing URL, process the data, and save it.
 
     Parameters
     ----------
-    df : pd.DataFrame
-        DataFrame containing job data.
-    ax : plt.Axes, optional
-        Matplotlib axes object to draw the plot onto.
-    job_type : str, optional
-        Job type for the title.
-    """
-    location_counts = df["LOCATION"].value_counts().head(10)
-    if location_counts.empty:
-        return  # Skip plotting if there are no locations to plot
-    location_counts.plot(kind="bar", ax=ax)
-    if ax:
-        ax.set_title(f"Job Locations (Top 10) - {job_type}")
-        ax.set_xlabel("")
-        ax.set_ylabel("Number of Jobs")
-    else:
-        plt.title(f"Job Locations (Top 10) - {job_type}")
-        plt.xlabel("")
-        plt.ylabel("Number of Jobs")
-        plt.show()
-
-
-def plot_salary_trends(df: pd.DataFrame) -> None:
-    """
-    Plot salary trends over time.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame containing job data.
-    """
-    df["DATE"] = pd.to_datetime(df["DATE"])
-    df = df.sort_values("DATE")
-    plt.figure(figsize=(8, 5))
-    plt.plot(df["DATE"], df["PAYMENT_FROM"].astype(float), label="Payment From")
-    plt.plot(df["DATE"], df["PAYMENT_TO"].astype(float), label="Payment To")
-    plt.title("Salary Trends Over Time")
-    plt.xlabel("Date")
-    plt.ylabel("Salary (PLN)")
-    plt.legend()
-    plt.show()
-
-
-def elbow_method(X: np.ndarray, ax: plt.Axes = None) -> int:
-    """
-    Use the elbow method to determine the optimal number of clusters.
-
-    Parameters
-    ----------
-    X : np.ndarray
-        Data for clustering.
-    ax : plt.Axes, optional
-        Matplotlib axes object to draw the plot onto.
+    working_dir : str
+        The base working directory.
+    current_skills : List[str]
+        List of current skills to match against job listings.
+    url : str
+        The URL of the job listings.
+    job_type : str
+        The job type to be added to the DataFrame.
 
     Returns
     -------
-    int
-        Optimal number of clusters.
+    pd.DataFrame
+        DataFrame containing the processed job data.
     """
-    distortions = []
-    K = range(1, min(11, len(X) + 1))
-    for k in K:
-        kmeans = KMeans(n_clusters=k, random_state=0)
-        kmeans.fit(X)
-        distortions.append(kmeans.inertia_)
+    try:
+        # Clear the current output data CSV file
+        file_path = os.path.join(working_dir, "output_data.csv")
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
-    angles = []
-    for i in range(1, len(K) - 1):
-        p1 = np.array([K[i - 1], distortions[i - 1]])
-        p2 = np.array([K[i], distortions[i]])
-        p3 = np.array([K[i + 1], distortions[i + 1]])
-        v1 = p1 - p2
-        v2 = p3 - p2
-        dot_product = np.dot(v1, v2)
-        norms_product = np.linalg.norm(v1) * np.linalg.norm(v2)
-        cos_angle = dot_product / norms_product
-        cos_angle = np.clip(cos_angle, -1.0, 1.0)
-        angle = np.arccos(cos_angle)
-        angles.append(angle)
-
-    if angles:
-        optimal_k = K[np.argmax(angles) + 1]
-        optimal_k = max(optimal_k - 2, 2)
-    else:
-        optimal_k = 2
-
-    if ax:
-        ax.plot(K, distortions, "bx-")
-        ax.set_xlabel("k")
-        ax.set_ylabel("Distortion")
-        ax.set_title(f"Elbow Method For Optimal k = {optimal_k}")
-    else:
-        plt.plot(K, distortions, "bx-")
-        plt.xlabel("k")
-        plt.ylabel("Distortion")
-        plt.title(f"Elbow Method For Optimal k = {optimal_k}")
-        plt.show()
-
-    return optimal_k
-
-
-def cluster_job_offers(df: pd.DataFrame) -> None:
-    """
-    Cluster job offers based on required and additional skills.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame containing job data.
-    """
-    df["REQUIRED_SKILLS_LEN"] = df["REQUIRED_SKILLS"].apply(
-        lambda x: len(eval(x)) if isinstance(x, str) else 0
-    )
-    df["ADDITIONAL_SKILLS_LEN"] = df["ADDITIONAL_SKILLS"].apply(
-        lambda x: len(eval(x)) if isinstance(x, str) and x != "None" else 0
-    )
-
-    df = df.dropna(subset=["REQUIRED_SKILLS_LEN", "PAYMENT_FROM", "PAYMENT_TO"])
-
-    plot_clusters(df)
-
-
-def plot_clusters(df: pd.DataFrame) -> None:
-    """
-    Plot clusters of job offers based on required skills and payment.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame containing job data.
-    """
-    job_types = df["JOB_TYPE"].unique()
-    num_plots = len(job_types)
-    num_per_page = 3
-    num_pages = (num_plots + num_per_page - 1) // num_per_page
-
-    for page in range(num_pages):
-        fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(12, 18))
-        axes = axes.flatten()
-
-        for i in range(num_per_page):
-            index = page * num_per_page + i
-            if index >= num_plots:
-                axes[2 * i].axis("off")
-                axes[2 * i + 1].axis("off")
-                continue
-
-            job_type = job_types[index]
-            subset = df[df["JOB_TYPE"] == job_type]
-            X = subset[
-                ["REQUIRED_SKILLS_LEN", "PAYMENT_FROM", "PAYMENT_TO"]
-            ].dropna()
-
-            if X.empty or len(X) < 2:
-                axes[2 * i].axis("off")
-                axes[2 * i + 1].axis("off")
-                continue
-
-            optimal_clusters = elbow_method(X, ax=axes[2 * i])
-
-            kmeans = KMeans(n_clusters=optimal_clusters, random_state=0).fit(X)
-            subset = subset.copy()  # Avoid SettingWithCopyWarning
-            subset.loc[:, "CLUSTER"] = kmeans.labels_
-
-            axes[2 * i + 1].scatter(
-                subset["REQUIRED_SKILLS_LEN"],
-                subset["PAYMENT_FROM"].astype(float),
-                c=subset["CLUSTER"],
-                cmap="viridis",
+        resp = requests.get(url)
+        int_resp = requests.get(url)
+        print(f"INT_RESP: {int_resp.text}")
+        # print(f"JSON: {int_resp.json()}")
+        json_string = str(
+            int_resp.text.replace("\\", "").split('{"pages":')[1].split('"meta":')[0].rstrip(",")
+            + "}]"
+        )
+        print(f"JSON_STRING: {json_string}")
+        data_set = json.loads(json_string)
+        print(f"DATA SET: {data_set}")
+        data_list = []
+        for data in data_set[0]["data"]:
+            sub_url = "https://justjoin.it/offers/" + data["slug"]
+            required_skills = str(data["requiredSkills"])
+            match_percentage = skill_match_percentage(required_skills,
+                                                      current_skills)
+            print(f"DATA: {data}")
+            row = {
+                "TITLE": data["title"],
+                "REQUIRED_SKILLS": str(data["requiredSkills"]),
+                "ADDITIONAL_SKILLS": str(data["niceToHaveSkills"]),
+                "WORKPLACE_TYPE": data["workplaceType"],
+                "REMOTE_INTERVIEW": data["remoteInterview"],
+                "URL": sub_url,
+                "PAYMENT_FROM": str(data["employmentTypes"][0]["fromPln"]),
+                "PAYMENT_TO": str(data["employmentTypes"][0]["toPln"]),
+                "LOCATION": data.get("city", "Unknown"),
+                "COMPANY": data.get("companyName", "Unknown"),
+                "DATE": datetime.datetime.now().strftime("%Y-%m-%d"),
+                "JOB_TYPE": job_type, # Add job type to the row
+                "MATCH_PERCENTAGE": match_percentage
+            }
+            data_list.append(row)
+            directory = create_working_dir(working_dir, data["slug"])
+            take_job_description(directory, sub_url)
+            word_cv_prepare(
+                working_dir,
+                directory,
+                data["requiredSkills"],
+                data["title"],
+                current_skills,
             )
-            axes[2 * i + 1].set_title(f"Clustering for {job_type}")
-            axes[2 * i + 1].set_xlabel("Required Skills Length")
-            axes[2 * i + 1].set_ylabel("Payment From")
-
-        plt.tight_layout()
-        plt.show()
-
-
-def analyze_job_types(df: pd.DataFrame) -> None:
-    """
-    Analyze job types for salary ranges and skill distribution.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame containing job data.
-    """
-    job_types = df["JOB_TYPE"].unique()
-    num_plots = len(job_types)
-    num_per_page = 4
-    num_pages = (num_plots + num_per_page - 1) // num_per_page
-
-    for page in range(num_pages):
-        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 8))
-        axes = axes.flatten()
-
-        for i in range(num_per_page):
-            index = page * num_per_page + i
-            if index >= num_plots:
-                axes[i].axis("off")
-                continue
-
-            job_type = job_types[index]
-            subset = df[df["JOB_TYPE"] == job_type]
-            subset[["PAYMENT_FROM", "PAYMENT_TO"]].astype(float).plot(
-                kind="box", ax=axes[i]
+            soft_skills = ["adaptability", "time management", "team leadership", "communication", "problem solving"]
+            generate_cover_letter(
+                directory,
+                data["title"],
+                data.get("companyName", "Unknown"),
+                sub_url,
+                data["requiredSkills"],
+                soft_skills=soft_skills
             )
-            axes[i].set_title(f"Salary Ranges for {job_type}")
-            axes[i].set_ylabel("Salary (PLN)")
+            print("Processed:", data["title"])
+        df = pd.DataFrame(data_list)
+        write_header = not os.path.exists(file_path)
+        df.to_csv(file_path, mode="a", index=False, header=write_header)
 
-        plt.tight_layout()
-        plt.show()
+        # Append to the output_whole.csv
+        whole_file_path = os.path.join(working_dir, "output_whole.csv")
+        df.to_csv(
+            whole_file_path, mode="a", index=False,
+            header=not os.path.exists(whole_file_path)
+        )
 
-    for page in range(num_pages):
-        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 8))
-        axes = axes.flatten()
-
-        for i in range(num_per_page):
-            index = page * num_per_page + i
-            if index >= num_plots:
-                axes[i].axis("off")
-                continue
-
-            job_type = job_types[index]
-            subset = df[df["JOB_TYPE"] == job_type]
-            plot_required_skills_pie_chart(subset, ax=axes[i], job_type=job_type)
-
-        plt.tight_layout()
-        plt.show()
-
-    for page in range(num_pages):
-        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 8))
-        axes = axes.flatten()
-
-        for i in range(num_per_page):
-            index = page * num_per_page + i
-            if index >= num_plots:
-                axes[i].axis("off")
-                continue
-
-            job_type = job_types[index]
-            subset = df[df["JOB_TYPE"] == job_type]
-            plot_job_locations(subset, ax=axes[i], job_type=job_type)
-
-        plt.tight_layout()
-        plt.show()
+        print("Data appended to CSV.")
+        return df
+    except Exception as e:
+        print(f"Error processing request 1: {e}")
+        return pd.DataFrame()  # Return empty DataFrame on error
 
 
-def analyze_skill_salary_relationship(df: pd.DataFrame) -> None:
+def skill_match_percentage(
+    required_skills: List[str], current_skills: List[str]
+) -> float:
     """
-    Analyze the relationship between skills and salary.
+    Calculate the percentage of matching skills between required skills
+    and current skills.
 
     Parameters
     ----------
-    df : pd.DataFrame
-        DataFrame containing job data.
+    required_skills : List[str]
+        List of required skills for a job.
+    current_skills : List[str]
+        List of current skills of the user.
+
+    Returns
+    -------
+    float
+        Percentage of matching skills.
     """
-    skills = df["REQUIRED_SKILLS"].apply(lambda x: eval(x) if isinstance(x, str) else [])
-    skill_counts = pd.Series(np.concatenate(skills.values)).value_counts(
-        normalize=True
-    ).head(20)
+    if not required_skills:
+        return 0.0
 
-    skills_repeated = np.concatenate(skills.values)
-    payment_repeated = np.repeat(df["PAYMENT_FROM"].values, [len(s) for s in skills])
+    required_skills_lower = [skill.lower() for skill in required_skills]
+    current_skills_lower = [skill.lower() for skill in current_skills]
 
-    skill_salary = pd.DataFrame(
-        {"SKILL": skills_repeated, "PAYMENT_FROM": payment_repeated}
-    )
-    avg_salary_per_skill = skill_salary.groupby("SKILL")["PAYMENT_FROM"].mean().loc[
-        skill_counts.index
-    ]
+    matched_skills = set(required_skills_lower).intersection(
+        set(current_skills_lower))
+    return len(matched_skills) / len(required_skills_lower) * 100
 
-    plt.figure(figsize=(10, 6))
-    avg_salary_per_skill.plot(kind="bar")
-    plt.title("Average Salary by Top 20 Skills")
-    plt.xlabel("Skills")
-    plt.ylabel("Average Salary (PLN)")
-    plt.xticks(rotation=45)
-    plt.show()
 
-    print("\nAverage Salary by Top 20 Skills:\n", avg_salary_per_skill)
+def generate_summary(working_dir: str, df: pd.DataFrame,
+                     skills_file: str) -> None:
+    summary_path = os.path.join(working_dir, "summary.txt")
+    with open(summary_path, "w", encoding="utf-8") as summary_file:
+        for index, row in df.iterrows():
+            job_title = row['TITLE']
+            match_percentage = row['MATCH_PERCENTAGE']
+            url = row['URL']
+            required_skills = [skill.lower() for skill in
+                               eval(row['REQUIRED_SKILLS'])] if isinstance(
+                row['REQUIRED_SKILLS'], str) else []
 
-def plot_salary_trends(df: pd.DataFrame) -> None:
+            with open(skills_file, "r") as file:
+                all_skills = [line.strip().lower() for line in file.readlines()]
+
+            missing_skills = set(required_skills) - set(all_skills)
+            missing_skills_str = ", ".join(missing_skills)
+
+            summary_file.write(f"{job_title}\n")
+            summary_file.write(
+                f"Procent pasujacych skilli: {match_percentage}%\n")
+            summary_file.write(
+                f"Lista skilli ktorych nie ma na liscie skills.txt: {missing_skills_str}\n")
+            summary_file.write(f"URL: {url}\n")
+            summary_file.write(f"----------------\n")
+
+
+def take_job_description(dir: str, url: str) -> None:
     """
-    Plot salary trends over time with future approximation.
+    Retrieve and save the job description from a given URL.
 
     Parameters
     ----------
-    df : pd.DataFrame
-        DataFrame containing job data.
+    dir : str
+        The directory where the job description will be saved.
+    url : str
+        The URL of the job description.
     """
-    df["DATE"] = pd.to_datetime(df["DATE"])
-    df = df.sort_values("DATE")
+    try:
+        resp = requests.get(url)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        target_div_content = soup.find_all("script")
 
-    # Fill NaN values with the median of the respective columns
-    df["PAYMENT_FROM"] = df["PAYMENT_FROM"].astype(float).fillna(df["PAYMENT_FROM"].astype(float).median())
-    df["PAYMENT_TO"] = df["PAYMENT_TO"].astype(float).fillna(df["PAYMENT_TO"].astype(float).median())
+        json_data = None
+        for script in target_div_content:
+            if 'body' in script.text:
+                json_data = script.text
+                break
 
-    # Adding future dates for approximation
-    future_dates = pd.date_range(df["DATE"].max(), periods=10, freq='D')[1:]
-    future_df = pd.DataFrame(future_dates, columns=["DATE"])
+        if json_data:
+            # Konwertuj JSON-encoded string do słownika
+            data = json.loads(json_data)
+            #data['props']['pageProps']['offer']['body']
 
-    model_from = LinearRegression()
-    model_to = LinearRegression()
-
-    X = np.array(df.index).reshape(-1, 1)
-    y_from = df["PAYMENT_FROM"].astype(float)
-    y_to = df["PAYMENT_TO"].astype(float)
-
-    model_from.fit(X, y_from)
-    model_to.fit(X, y_to)
-
-    future_X = np.array(range(len(df), len(df) + len(future_dates))).reshape(-1, 1)
-    future_df["PAYMENT_FROM"] = model_from.predict(future_X)
-    future_df["PAYMENT_TO"] = model_to.predict(future_X)
-
-    plt.figure(figsize=(8, 5))
-    plt.plot(df["DATE"], df["PAYMENT_FROM"].astype(float), label="Payment From")
-    plt.plot(df["DATE"], df["PAYMENT_TO"].astype(float), label="Payment To")
-    plt.plot(future_df["DATE"], future_df["PAYMENT_FROM"], linestyle='--', color='blue', label="Predicted Payment From")
-    plt.plot(future_df["DATE"], future_df["PAYMENT_TO"], linestyle='--', color='orange', label="Predicted Payment To")
-    plt.title("Salary Trends Over Time")
-    plt.xlabel("Date")
-    plt.ylabel("Salary (PLN)")
-    plt.legend()
-    plt.show()
+            with open(
+                os.path.join(dir, "job_description.txt"), "w", encoding="utf-8"
+            ) as fdescriptor:
+                fdescriptor.write(f"Job URL: {url}\n\n")
+                fdescriptor.write(data['props']['pageProps']['offer']["title"])
+                fdescriptor.write(
+                    str(data['props']['pageProps']['offer']['companyName'])
+                )
+                fdescriptor.write(
+                    str(data['props']['pageProps']['offer']["employmentTypes"])
+                )
+                fdescriptor.write(
+                    str(data['props']['pageProps']['offer']['body'])
+                )
+                fdescriptor.write(
+                    str(data['props']['pageProps']['offer']['experienceLevel'])
+                )
+        else:
+            print("The specified div was not found.")
+    except Exception as e:
+        print(f"Error taking job description: {e}")
