@@ -1,0 +1,7 @@
+pandas
+matplotlib
+scikit-learn
+python-docx
+requests
+beautifulsoup4
+jinja2
