@@ -48,6 +48,10 @@ def load_skills(file_path: str) -> None:
     ----------
     file_path : str
         Path to the file containing skills.
+
+    Returns:
+    --------
+    None
     """
     global current_skills
     with open(file_path, "r") as file:
