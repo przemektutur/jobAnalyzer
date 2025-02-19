@@ -1,4 +1,4 @@
-"""main.py - main project file."""
+# main.py
 import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -7,7 +7,7 @@ import data_processing as dp
 import visualization as vz
 import whole
 
-# Urls definitions for different job offers
+# Zdefiniowanie URL dla różnych typów ofert
 urls = {
     "JavaScript": "https://justjoin.it/all-locations/javascript",
     "HTML": "https://justjoin.it/all-locations/html",
@@ -35,7 +35,7 @@ urls = {
     "Other": "https://justjoin.it/all-locations/other",
 }
 
-# Working directory global settings
+# Ustawienia katalogu roboczego
 working_dir = ""
 current_skills = []
 
@@ -46,11 +46,8 @@ def load_skills(file_path: str) -> None:
 
     Parameters
     ----------
-    file_path: Path to the file containing skills.
-
-    Return:
-    -------
-    None
+    file_path : str
+        Path to the file containing skills.
     """
     global current_skills
     with open(file_path, "r") as file:
@@ -64,11 +61,8 @@ def analyze_data(df: pd.DataFrame) -> None:
 
     Parameters
     ----------
-    df: DataFrame containing job data.
-
-    Return:
-    -------
-    None
+    df : pd.DataFrame
+        DataFrame containing job data.
     """
     model_from, model_to = vz.analyze_data(df)
     messagebox.showinfo("Info", "Data analysis completed.")
@@ -80,11 +74,8 @@ def visualize_data(df: pd.DataFrame) -> None:
 
     Parameters
     ----------
-    df: DataFrame containing job data.
-
-    Return:
-    -------
-    None
+    df : pd.DataFrame
+        DataFrame containing job data.
     """
     most_common_skills, high_salary_skills = vz.visualize_data(df)
     most_common_skills_str = most_common_skills.to_string()
@@ -99,13 +90,6 @@ class App(tk.Tk):
     def __init__(self) -> None:
         """
         Initialize the App window.
-        __init__ - Application constructor
-
-        This method does not take any parameters.
-
-        Return:
-        --------
-        None
         """
         super().__init__()
         self.title("Job Scraper")
@@ -120,12 +104,6 @@ class App(tk.Tk):
     def create_widgets(self) -> None:
         """
         Create and arrange widgets in the app window.
-
-        This method does not take any parameters.
-
-        Return:
-        -------
-        None
         """
         tk.Label(self, text="Select Job Type", width=20).grid(
             row=0, column=0, padx=10, pady=5
@@ -197,12 +175,6 @@ class App(tk.Tk):
     def set_working_directory(self) -> None:
         """
         Set the working directory for saving job data.
-
-        This method does not take any parameters.
-
-        Return:
-        -------
-        None
         """
         global working_dir
         working_dir = filedialog.askdirectory()
@@ -216,12 +188,6 @@ class App(tk.Tk):
     def load_skills(self) -> None:
         """
         Load skills from a selected file.
-
-        This method does not take any parameters.
-
-        Return:
-        -------
-        None
         """
         file_path = filedialog.askopenfilename()
         if file_path:
@@ -230,12 +196,6 @@ class App(tk.Tk):
     def scrape_jobs(self) -> None:
         """
         Scrape jobs based on the selected criteria and save the data.
-
-        This method does not take any parameters.
-
-        Return:
-        -------
-        None
         """
         url_key = self.url_var.get()
         experience_level = self.experience_level_var.get()
@@ -285,12 +245,6 @@ class App(tk.Tk):
     def analyze_data(self) -> None:
         """
         Analyze the scraped job data.
-
-        This method does not take any parameters.
-
-        Return:
-        -------
-        None
         """
         file_path = os.path.join(working_dir, "output_data.csv")
         if os.path.exists(file_path):
@@ -304,12 +258,6 @@ class App(tk.Tk):
     def visualize_data(self) -> None:
         """
         Visualize the scraped job data.
-
-        This method does not take any parameters.
-
-        Return:
-        -------
-        None
         """
         file_path = os.path.join(working_dir, "output_data.csv")
         if os.path.exists(file_path):
@@ -323,12 +271,6 @@ class App(tk.Tk):
     def run_whole_analysis(self) -> None:
         """
         Run the complete analysis using the whole module.
-
-        This method does not take any parameters.
-
-        Return:
-        -------
-        None
         """
         whole.main()
         messagebox.showinfo("Info", "Whole analysis completed.")
@@ -337,4 +279,3 @@ class App(tk.Tk):
 if __name__ == "__main__":
     app = App()
     app.mainloop()
-
