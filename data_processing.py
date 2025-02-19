@@ -21,12 +21,15 @@ def create_working_dir(working_dir: str, name: str) -> str:
 
     Parameters
     ----------
-    working_dir: Base directory where the new directory will be created.
-    name: Name to be sanitized and included in the directory name.
+    working_dir : str
+        The base directory where the new directory will be created.
+    name : str
+        The name to be sanitized and included in the directory name.
 
     Returns
     -------
-    Path to the newly created directory.
+    str
+        The path to the newly created directory.
     """
     date = (
         str(datetime.datetime.now())
@@ -53,11 +56,13 @@ def sanitize_filename(filename: str) -> str:
 
     Parameters
     ----------
-    filename: Filename to sanitize.
+    filename : str
+        The filename to sanitize.
 
     Returns
     -------
-    Sanitized filename.
+    str
+        The sanitized filename.
     """
     return (
         filename.replace(" ", "_")
@@ -85,15 +90,16 @@ def word_cv_prepare(
 
     Parameters
     ----------
-    working_dir: Base working directory.
-    save_dir: Directory where the CV will be saved.
-    skills: List of skills to include in the CV.
-    position: Job position to include in the CV.
-    current_skills: List of current skills to include in the CV.
-
-    Returns
-    -------
-    None
+    working_dir : str
+        The base working directory.
+    save_dir : str
+        The directory where the CV will be saved.
+    skills : List[str]
+        List of skills to include in the CV.
+    position : str
+        The job position to include in the CV.
+    current_skills : List[str]
+        List of current skills to include in the CV.
     """
     all_skills = sorted(set(current_skills + skills), key=str.lower)
 
@@ -167,13 +173,7 @@ def word_cv_prepare(
         doc.add_paragraph("\n" + "\n".join(github_links) + "\n")
 
     # Add soft skills
-    soft_skills = [
-        "ADAPTABILITY",
-        "TIME MANAGEMENT",
-        "TEAM LEADERSHIP",
-        "COMMUNICATION",
-        "PROBLEM SOLVING"
-    ]
+    soft_skills = ["ADAPTABILITY", "TIME MANAGEMENT", "TEAM LEADERSHIP", "COMMUNICATION", "PROBLEM SOLVING"]
     paragraph4 = doc.add_paragraph("SOFT SKILLS")
     paragraph4.style = "Heading 1"
     paragraph4.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -189,50 +189,48 @@ def word_cv_prepare(
 
     # Save the document
     try:
-        doc.save(os.path.join(
-            save_dir, f"Przemyslaw_Tutur_{doc_name_position}.docx")
-        )
+        doc.save(os.path.join(save_dir, f"Przemyslaw_Tutur_{doc_name_position}.docx"))
     except OSError as e:
         print(f"Error saving document: {e}")
 
-    # Append - PROJECTS.docx with custom formatting based on tags
+    # Append - PROJECTS.docx with custom formatting based on tags and justification
     projects_path = os.path.join(working_dir, "PROJECTS.docx")
     if os.path.exists(projects_path):
         projects_doc = docx.Document(projects_path)
-        doc.add_page_break()
+        doc.add_page_break()  # Dodaj podział strony przed sekcją projektów
 
         for para in projects_doc.paragraphs:
             text = para.text.strip()
 
             if text.startswith("<main-info>"):
-                # Main section - "MAIN PROJECTS"
+                # Główna sekcja - "MAIN PROJECTS"
                 main_info_paragraph = doc.add_paragraph(text.replace("<main-info>", "").strip())
                 main_info_paragraph.style = "Heading 1"
             elif text.startswith("<company>"):
-                # Company name- bolded
+                # Nazwa firmy - pogrubiona
                 company_paragraph = doc.add_paragraph()
                 company_run = company_paragraph.add_run(text.replace("<company>", "").strip())
                 company_run.bold = True
                 company_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
             elif text.startswith("<project>"):
-                # Project - tabulation + bold
+                # Projekt - tabulacja + pogrubienie
                 project_paragraph = doc.add_paragraph(text.replace("<project>", "").strip())
                 project_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
-                project_paragraph.paragraph_format.first_line_indent = docx.shared.Pt(0)
+                project_paragraph.paragraph_format.first_line_indent = docx.shared.Pt(0)  # Wcięcie dla kolejnych linii
                 project_run = project_paragraph.runs[0]
                 project_run.bold = True
             elif text.startswith("<project-desc>"):
-                # Project description - double tabulation
+                # Opis projektu - podwójna tabulacja
                 project_desc_paragraph = doc.add_paragraph(text.replace("<project-desc>", "").strip())
                 project_desc_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
                 project_desc_paragraph.paragraph_format.first_line_indent = docx.shared.Pt(0)
             elif text.startswith("<project-skills>"):
-                # Skills - double tabulation
+                # Umiejętności - potrójna tabulacja
                 project_skills_paragraph = doc.add_paragraph(text.replace("<project-skills>", "").strip())
                 project_skills_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
                 project_skills_paragraph.paragraph_format.first_line_indent = docx.shared.Pt(36)
             else:
-                # other possibilities - if exists
+                # Inne przypadki (jeśli są)
                 other_paragraph = doc.add_paragraph(text)
                 other_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
 
@@ -251,16 +249,18 @@ def generate_cover_letter(
 
     Parameters
     ----------
-    working_dir: Base working directory.
-    job_title: Job title to include in the cover letter.
-    company_name: Company name to include in the cover letter.
-    job_url: Job URL to include in the cover letter.
-    skills: List of hard skills to include in the cover letter.
-    soft_skills: List of soft skills to include in the cover letter.
-
-    Returns
-    -------
-    None
+    working_dir : str
+        The base working directory.
+    job_title : str
+        The job title to include in the cover letter.
+    company_name : str
+        The company name to include in the cover letter.
+    job_url : str
+        The job URL to include in the cover letter.
+    skills : List[str]
+        List of hard skills to include in the cover letter.
+    soft_skills : List[str]
+        List of soft skills to include in the cover letter.
     """
     technical_skills = ", ".join(skills)
     soft_skills_str = ", ".join(soft_skills)
@@ -332,12 +332,10 @@ def take_job_description(dir: str, url: str) -> None:
 
     Parameters
     ----------
-    dir: The directory where the job description will be saved.
-    url: URL of the job description.
-
-    Returns
-    -------
-    None
+    dir : str
+        The directory where the job description will be saved.
+    url : str
+        The URL of the job description.
     """
     try:
         resp = requests.get(url)
@@ -362,13 +360,17 @@ def request(
 
     Parameters
     ----------
-    working_dir: Base working directory.
-    current_skills: List of current skills to match against job listings.
-    url: URL of the job listings.
+    working_dir : str
+        The base working directory.
+    current_skills : List[str]
+        List of current skills to match against job listings.
+    url : str
+        The URL of the job listings.
 
     Returns
     -------
-    DataFrame containing the processed job data.
+    pd.DataFrame
+        DataFrame containing the processed job data.
     """
     try:
         # Clear the current output data CSV file
@@ -409,13 +411,7 @@ def request(
                 data["title"],
                 current_skills,
             )
-            soft_skills = [
-                "adaptability",
-                "time management",
-                "team leadership",
-                "communication",
-                "problem solving"
-            ]
+            soft_skills = ["adaptability", "time management", "team leadership", "communication", "problem solving"]
             generate_cover_letter(
                 directory,
                 data["title"],
@@ -450,14 +446,19 @@ def request(
 
     Parameters
     ----------
-    working_dir: Base working directory.
-    current_skills: List of current skills to match against job listings.
-    url: URL of the job listings.
-    job_type: Job type to be added to the DataFrame.
+    working_dir : str
+        The base working directory.
+    current_skills : List[str]
+        List of current skills to match against job listings.
+    url : str
+        The URL of the job listings.
+    job_type : str
+        The job type to be added to the DataFrame.
 
     Returns
     -------
-    DataFrame containing the processed job data.
+    pd.DataFrame
+        DataFrame containing the processed job data.
     """
     try:
         # Clear the current output data CSV file
@@ -467,17 +468,22 @@ def request(
 
         resp = requests.get(url)
         int_resp = requests.get(url)
+        print(f"INT_RESP: {int_resp.text}")
+        # print(f"JSON: {int_resp.json()}")
         json_string = str(
-            int_resp.text.split('{"pages":')[1].split('"meta":')[0].rstrip(",")
+            int_resp.text.replace("\\", "").split('{"pages":')[1].split('"meta":')[0].rstrip(",")
             + "}]"
         )
+        print(f"JSON_STRING: {json_string}")
         data_set = json.loads(json_string)
+        print(f"DATA SET: {data_set}")
         data_list = []
         for data in data_set[0]["data"]:
             sub_url = "https://justjoin.it/offers/" + data["slug"]
             required_skills = str(data["requiredSkills"])
             match_percentage = skill_match_percentage(required_skills,
                                                       current_skills)
+            print(f"DATA: {data}")
             row = {
                 "TITLE": data["title"],
                 "REQUIRED_SKILLS": str(data["requiredSkills"]),
@@ -503,13 +509,7 @@ def request(
                 data["title"],
                 current_skills,
             )
-            soft_skills = [
-                "adaptability",
-                "time management",
-                "team leadership",
-                "communication",
-                "problem solving"
-            ]
+            soft_skills = ["adaptability", "time management", "team leadership", "communication", "problem solving"]
             generate_cover_letter(
                 directory,
                 data["title"],
@@ -533,7 +533,7 @@ def request(
         print("Data appended to CSV.")
         return df
     except Exception as e:
-        print(f"Error processing request: {e}")
+        print(f"Error processing request 1: {e}")
         return pd.DataFrame()  # Return empty DataFrame on error
 
 
@@ -546,12 +546,15 @@ def skill_match_percentage(
 
     Parameters
     ----------
-    required_skills: List of required skills for a job.
-    current_skills: List of current skills of the user.
+    required_skills : List[str]
+        List of required skills for a job.
+    current_skills : List[str]
+        List of current skills of the user.
 
     Returns
     -------
-    Percentage of matching skills.
+    float
+        Percentage of matching skills.
     """
     if not required_skills:
         return 0.0
@@ -586,9 +589,7 @@ def generate_summary(working_dir: str, df: pd.DataFrame,
             summary_file.write(
                 f"Procent pasujacych skilli: {match_percentage}%\n")
             summary_file.write(
-                "Lista skilli ktorych nie ma na liscie skills.txt: "
-                f"{missing_skills_str}\n"
-            )
+                f"Lista skilli ktorych nie ma na liscie skills.txt: {missing_skills_str}\n")
             summary_file.write(f"URL: {url}\n")
             summary_file.write(f"----------------\n")
 
@@ -599,12 +600,10 @@ def take_job_description(dir: str, url: str) -> None:
 
     Parameters
     ----------
-    dir: Directory where the job description will be saved.
-    url: URL of the job description.
-
-    Returns
-    -------
-    None
+    dir : str
+        The directory where the job description will be saved.
+    url : str
+        The URL of the job description.
     """
     try:
         resp = requests.get(url)
