@@ -1,4 +1,4 @@
-"""Visualization of processed data - visualization.py."""
+# visualization.py
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -14,11 +14,13 @@ def analyze_data(df: pd.DataFrame) -> Tuple[LinearRegression, LinearRegression]:
 
     Parameters
     ----------
-    df: DataFrame containing job data.
+    df : pd.DataFrame
+        DataFrame containing job data.
 
     Returns
     -------
-    Fitted linear regression models for payment from and to.
+    Tuple[LinearRegression, LinearRegression]
+        Fitted linear regression models for payment from and to.
     """
     df["REQUIRED_SKILLS_LEN"] = df["REQUIRED_SKILLS"].apply(
         lambda x: len(eval(x)) if isinstance(x, str) else 0
@@ -48,11 +50,13 @@ def visualize_data(df: pd.DataFrame) -> Tuple[pd.Series, pd.Series]:
 
     Parameters
     ----------
-    df: DataFrame containing job data.
+    df : pd.DataFrame
+        DataFrame containing job data.
 
     Returns
     -------
-    Most common skills and high salary skills.
+    Tuple[pd.Series, pd.Series]
+        Most common skills and high salary skills.
     """
     most_common_skills, high_salary_skills = analyze_most_desirable_skills(df)
     plot_required_skills_pie_chart(df)
@@ -71,17 +75,14 @@ def plot_required_skills_pie_chart(
 
     Parameters
     ----------
-    df: DataFrame containing job data.
-    ax: Matplotlib axes object to draw the plot onto.
-    job_type: Job type for the title.
-    
-    Returns
-    -------
-    None
+    df : pd.DataFrame
+        DataFrame containing job data.
+    ax : plt.Axes, optional
+        Matplotlib axes object to draw the plot onto.
+    job_type : str, optional
+        Job type for the title.
     """
-    skills = df["REQUIRED_SKILLS"].apply(
-        lambda x: eval(x) if isinstance(x, str) else []
-    )
+    skills = df["REQUIRED_SKILLS"].apply(lambda x: eval(x) if isinstance(x, str) else [])
     if skills.apply(len).sum() == 0:
         return  # Skip plotting if there are no skills to plot
     skills_counts = pd.Series(np.concatenate(skills.values)).value_counts()
@@ -101,11 +102,8 @@ def plot_salary_ranges(df: pd.DataFrame) -> None:
 
     Parameters
     ----------
-    df: DataFrame containing job data.
-
-    Returns
-    -------
-    None
+    df : pd.DataFrame
+        DataFrame containing job data.
     """
     # plt.figure(figsize=(6, 4))
     df[["PAYMENT_FROM", "PAYMENT_TO"]].astype(float).plot(kind="box")
@@ -122,25 +120,23 @@ def analyze_most_desirable_skills(
 
     Parameters
     ----------
-    df: DataFrame containing job data.
+    df : pd.DataFrame
+        DataFrame containing job data.
 
     Returns
     -------
-    Most common skills and high salary skills.
+    Tuple[pd.Series, pd.Series]
+        Most common skills and high salary skills.
     """
-    skills = df["REQUIRED_SKILLS"].apply(
-        lambda x: eval(x) if isinstance(x, str) else []
-    )
+    skills = df["REQUIRED_SKILLS"].apply(lambda x: eval(x) if isinstance(x, str) else [])
     if skills.apply(len).sum() == 0:
         return pd.Series(dtype="int"), pd.Series(dtype="int")
     skills_counts = pd.Series(np.concatenate(skills.values)).value_counts()
     high_salary_skills = pd.Series(
         np.concatenate(
-            df[
-                df["PAYMENT_TO"].astype(float) 
-                > df["PAYMENT_TO"].astype(float).quantile(0.75)
-            ]["REQUIRED_SKILLS"]
-            .apply(lambda x: eval(x) if isinstance(x, str) else []).values
+            df[df["PAYMENT_TO"].astype(float) > df["PAYMENT_TO"].astype(float).quantile(0.75)][
+                "REQUIRED_SKILLS"
+            ].apply(lambda x: eval(x) if isinstance(x, str) else []).values
         )
     ).value_counts()
 
@@ -155,13 +151,12 @@ def plot_job_locations(
 
     Parameters
     ----------
-    df: DataFrame containing job data.
-    ax: Matplotlib axes object to draw the plot onto.
-    job_type: Job type for the title.
-
-    Returns
-    -------
-    None
+    df : pd.DataFrame
+        DataFrame containing job data.
+    ax : plt.Axes, optional
+        Matplotlib axes object to draw the plot onto.
+    job_type : str, optional
+        Job type for the title.
     """
     location_counts = df["LOCATION"].value_counts().head(10)
     if location_counts.empty:
@@ -184,18 +179,13 @@ def plot_salary_trends(df: pd.DataFrame) -> None:
 
     Parameters
     ----------
-    df: DataFrame containing job data.
-
-    Returns
-    -------
-    None
+    df : pd.DataFrame
+        DataFrame containing job data.
     """
     df["DATE"] = pd.to_datetime(df["DATE"])
     df = df.sort_values("DATE")
     plt.figure(figsize=(8, 5))
-    plt.plot(
-        df["DATE"], df["PAYMENT_FROM"].astype(float), label="Payment From"
-    )
+    plt.plot(df["DATE"], df["PAYMENT_FROM"].astype(float), label="Payment From")
     plt.plot(df["DATE"], df["PAYMENT_TO"].astype(float), label="Payment To")
     plt.title("Salary Trends Over Time")
     plt.xlabel("Date")
@@ -210,12 +200,15 @@ def elbow_method(X: np.ndarray, ax: plt.Axes = None) -> int:
 
     Parameters
     ----------
-    X: Data for clustering.
-    ax: Matplotlib axes object to draw the plot onto.
+    X : np.ndarray
+        Data for clustering.
+    ax : plt.Axes, optional
+        Matplotlib axes object to draw the plot onto.
 
     Returns
     -------
-    Optimal number of clusters.
+    int
+        Optimal number of clusters.
     """
     distortions = []
     K = range(1, min(11, len(X) + 1))
@@ -265,11 +258,8 @@ def cluster_job_offers(df: pd.DataFrame) -> None:
 
     Parameters
     ----------
-    df: DataFrame containing job data.
-
-    Returns
-    -------
-    None
+    df : pd.DataFrame
+        DataFrame containing job data.
     """
     df["REQUIRED_SKILLS_LEN"] = df["REQUIRED_SKILLS"].apply(
         lambda x: len(eval(x)) if isinstance(x, str) else 0
@@ -278,9 +268,7 @@ def cluster_job_offers(df: pd.DataFrame) -> None:
         lambda x: len(eval(x)) if isinstance(x, str) and x != "None" else 0
     )
 
-    df = df.dropna(
-        subset=["REQUIRED_SKILLS_LEN", "PAYMENT_FROM", "PAYMENT_TO"]
-    )
+    df = df.dropna(subset=["REQUIRED_SKILLS_LEN", "PAYMENT_FROM", "PAYMENT_TO"])
 
     plot_clusters(df)
 
@@ -291,11 +279,8 @@ def plot_clusters(df: pd.DataFrame) -> None:
 
     Parameters
     ----------
-    df: DataFrame containing job data.
-
-    Returns
-    -------
-    None
+    df : pd.DataFrame
+        DataFrame containing job data.
     """
     job_types = df["JOB_TYPE"].unique()
     num_plots = len(job_types)
@@ -350,11 +335,8 @@ def analyze_job_types(df: pd.DataFrame) -> None:
 
     Parameters
     ----------
-    df: DataFrame containing job data.
-
-    Returns
-    -------
-    None
+    df : pd.DataFrame
+        DataFrame containing job data.
     """
     job_types = df["JOB_TYPE"].unique()
     num_plots = len(job_types)
@@ -394,9 +376,7 @@ def analyze_job_types(df: pd.DataFrame) -> None:
 
             job_type = job_types[index]
             subset = df[df["JOB_TYPE"] == job_type]
-            plot_required_skills_pie_chart(
-                subset, ax=axes[i], job_type=job_type
-            )
+            plot_required_skills_pie_chart(subset, ax=axes[i], job_type=job_type)
 
         plt.tight_layout()
         plt.show()
@@ -425,32 +405,23 @@ def analyze_skill_salary_relationship(df: pd.DataFrame) -> None:
 
     Parameters
     ----------
-    df: DataFrame containing job data.
-
-    Returns
-    -------
-    None
+    df : pd.DataFrame
+        DataFrame containing job data.
     """
-    skills = df["REQUIRED_SKILLS"].apply(
-        lambda x: eval(x) if isinstance(x, str) else []
-    )
+    skills = df["REQUIRED_SKILLS"].apply(lambda x: eval(x) if isinstance(x, str) else [])
     skill_counts = pd.Series(np.concatenate(skills.values)).value_counts(
         normalize=True
     ).head(20)
 
     skills_repeated = np.concatenate(skills.values)
-    payment_repeated = np.repeat(
-        df["PAYMENT_FROM"].values, [len(s) for s in skills]
-    )
+    payment_repeated = np.repeat(df["PAYMENT_FROM"].values, [len(s) for s in skills])
 
     skill_salary = pd.DataFrame(
         {"SKILL": skills_repeated, "PAYMENT_FROM": payment_repeated}
     )
-    avg_salary_per_skill = (
-        skill_salary.groupby("SKILL")["PAYMENT_FROM"]
-        .mean()
-        .loc[skill_counts.index]
-    )
+    avg_salary_per_skill = skill_salary.groupby("SKILL")["PAYMENT_FROM"].mean().loc[
+        skill_counts.index
+    ]
 
     plt.figure(figsize=(10, 6))
     avg_salary_per_skill.plot(kind="bar")
@@ -468,26 +439,15 @@ def plot_salary_trends(df: pd.DataFrame) -> None:
 
     Parameters
     ----------
-    df: DataFrame containing job data.
-
-    Returns
-    -------
-    None
+    df : pd.DataFrame
+        DataFrame containing job data.
     """
     df["DATE"] = pd.to_datetime(df["DATE"])
     df = df.sort_values("DATE")
 
     # Fill NaN values with the median of the respective columns
-    df["PAYMENT_FROM"] = (
-        df["PAYMENT_FROM"]
-        .astype(float)
-        .fillna(df["PAYMENT_FROM"].astype(float).median())
-    )
-    df["PAYMENT_TO"] = (
-        df["PAYMENT_TO"]
-        .astype(float)
-        .fillna(df["PAYMENT_TO"].astype(float).median())
-    )
+    df["PAYMENT_FROM"] = df["PAYMENT_FROM"].astype(float).fillna(df["PAYMENT_FROM"].astype(float).median())
+    df["PAYMENT_TO"] = df["PAYMENT_TO"].astype(float).fillna(df["PAYMENT_TO"].astype(float).median())
 
     # Adding future dates for approximation
     future_dates = pd.date_range(df["DATE"].max(), periods=10, freq='D')[1:]
@@ -503,33 +463,15 @@ def plot_salary_trends(df: pd.DataFrame) -> None:
     model_from.fit(X, y_from)
     model_to.fit(X, y_to)
 
-    future_X = np.array(
-        range(len(df), len(df) + len(future_dates))
-    ).reshape(-1, 1)
+    future_X = np.array(range(len(df), len(df) + len(future_dates))).reshape(-1, 1)
     future_df["PAYMENT_FROM"] = model_from.predict(future_X)
     future_df["PAYMENT_TO"] = model_to.predict(future_X)
 
     plt.figure(figsize=(8, 5))
-    plt.plot(
-        df["DATE"],
-        df["PAYMENT_FROM"].astype(float),
-        label="Payment From"
-    )
+    plt.plot(df["DATE"], df["PAYMENT_FROM"].astype(float), label="Payment From")
     plt.plot(df["DATE"], df["PAYMENT_TO"].astype(float), label="Payment To")
-    plt.plot(
-        future_df["DATE"],
-        future_df["PAYMENT_FROM"], 
-        linestyle='--',
-        color='blue',
-        label="Predicted Payment From"
-    )
-    plt.plot(
-        future_df["DATE"],
-        future_df["PAYMENT_TO"],
-        linestyle='--',
-        color='orange',
-        label="Predicted Payment To"
-    )
+    plt.plot(future_df["DATE"], future_df["PAYMENT_FROM"], linestyle='--', color='blue', label="Predicted Payment From")
+    plt.plot(future_df["DATE"], future_df["PAYMENT_TO"], linestyle='--', color='orange', label="Predicted Payment To")
     plt.title("Salary Trends Over Time")
     plt.xlabel("Date")
     plt.ylabel("Salary (PLN)")
